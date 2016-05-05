@@ -413,7 +413,7 @@ abstract class LocoPackage {
             $prefix = '';
         }
         // only prefix with text domain for plugins and files in global lang directory
-        else if( 'plugin' === $type || $force_global ){
+        else if( 'plugin' === $type || 'muplugin' === $type || $force_global ){
             $prefix = $domain.'-';
         }
         else {
@@ -810,6 +810,44 @@ abstract class LocoPackage {
 
 
     /**
+     * Construct package object from mu-plugin array
+     * note that handle is file path for mu-plugins in WordPress
+     */
+    private static function get_muplugin( $handle ) {
+        $plugins = get_mu_plugins();
+        if ( isset( $plugins[$handle] ) && is_array( $plugins[$handle] ) ) {
+            $plugin = $plugins[$handle];
+            $domain = $plugin['TextDomain'] or $domain = str_replace('/','-',dirname($handle));
+            if ( '.' === $domain ) {
+                // single-file plugin has no directory to take a domain from
+                $domain = substr( basename( $handle ), 0, -4 );
+            }
+            $package = new LocoMUPluginPackage( $handle, $domain, $plugin['Name'], $plugin['DomainPath'] );
+            // all mu-plugins are single file in nature
+            // (they might include additional files though, but we cannot know about them)
+            $path = wp_normalize_path( WPMU_PLUGIN_DIR . '/' . $package->get_domainpath() );
+            if ( is_dir( $path ) ) {
+                $file = "$path/$domain.pot";
+                if ( file_exists( $file ) ) {
+                    $package->add_po( array( 'pot' => array( $file ) ), $domain );
+                }
+                $files = LocoAdmin::find_grouped( $path, ';/' . preg_quote( $domain, ';' ) . '-[^/]+\\.po$;' );
+                if ( ! empty( $files['po'] ) ) {
+                    $package->add_po( array( 'po' => $files['po'] ), $domain );
+                }
+                $files = LocoAdmin::find_grouped( $path, ';/' . preg_quote( $domain, ';' ) . '-[^/]+\\.mo$;' );
+                if ( ! empty( $files['mo'] ) ) {
+                    $package->add_mo( $files['mo'], $domain );
+                }
+            }
+            // find additional plugin PO under WP_LANG_DIR/plugins
+            $package->add_lang_dir( WP_LANG_DIR . '/plugins', $domain );
+            return $package;
+        }
+    }
+
+
+    /**
      * construct a core package object from name
      * @return LocoPackage
      */
@@ -1018,6 +1056,47 @@ class LocoPluginPackage extends LocoPackage {
     }
     public function get_default_file(){
         return WP_PLUGIN_DIR.'/'.$this->get_handle();
+    }
+}
+
+
+/**
+ * Extended package class for must-use plugins
+ */
+class LocoMUPluginPackage extends LocoPackage {
+    public function global_lang_dir() {
+        return WP_LANG_DIR . '/plugins';
+    }
+    public function get_type() {
+        return 'muplugin';
+    }
+    public function lang_dir( $domain = '', $skip_global = false ) {
+        $dir = WPMU_PLUGIN_DIR . $this->domainpath;
+        $global = $this->global_lang_dir();
+        if ( is_writable( $dir ) || $skip_global || ! is_writable( $global ) ) {
+            return $dir;
+        }
+        return $global;
+    }
+    public function get_domainpath() {
+        return $this->domainpath;
+    }
+    public function get_original( $tag ) {
+        $muplugins = get_mu_plugins();
+        $muplugin = $muplugins[ $this->get_handle() ];
+        return isset( $muplugin[$tag] ) ? $muplugin[$tag] : '';
+    }
+    public function get_headers(){
+        $headers = array();
+        $muplugins = get_mu_plugins();
+        $muplugin = $muplugins[ $this->get_handle() ];
+        foreach( array( 'Name', 'PluginURI', 'Description', 'Author', 'AuthorURI' ) as $tag ) {
+            $headers[$tag] = isset( $plugin[$tag] ) ? $plugin[$tag] : '';
+        }
+        return $headers;
+    }
+    public function get_default_file() {
+        return WPMU_PLUGIN_DIR . '/' . $this->get_handle();
     }
 }
 

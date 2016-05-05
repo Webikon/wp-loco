@@ -58,6 +58,19 @@ $nav = array (
     endif;
     
     
+    // Must-Use Plugin packages
+    //
+    if ( $muplugins ): ?>
+    <div class="icon32 icon-plugins"><br /></div>
+    <h2 class="dashicons-admin-plugins">
+        <?php Loco::h( Loco::_x( 'MU Plugins', 'Package list header' ) ) ?>
+    </h2>
+    <div class="loco-list loco-list-plugins">
+        <?php Loco::render( 'admin-list', array( 'items' => $muplugins ) ) ?>
+    </div><?php
+    endif;
+
+
     // Core packages
     //
     if( $core ):?> 

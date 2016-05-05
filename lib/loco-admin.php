@@ -248,6 +248,12 @@ abstract class LocoAdmin {
                 $package = LocoPackage::get( $plugin_file, 'plugin' ) and
                 $plugins[] = $package;
             }
+            // @var array $muplugin
+            $muplugins = array();
+            foreach( get_mu_plugins() as $muplugin_file => $muplugin ){
+                $package = LocoPackage::get( $muplugin_file, 'muplugin' ) and
+                $muplugins[] = $package;
+            }
             // @var array $core
             $core = array();
             $conf = Loco::config();
@@ -261,9 +267,10 @@ abstract class LocoAdmin {
             }
             // order most active packges first in each set
             $args = array (
-                'themes'  => LocoPackage::sort_modified( $themes ),
-                'plugins' => LocoPackage::sort_modified( $plugins ),
-                'core'    => LocoPackage::sort_modified( $core ),
+                'themes'    => LocoPackage::sort_modified( $themes ),
+                'plugins'   => LocoPackage::sort_modified( $plugins ),
+                'muplugins' => LocoPackage::sort_modified( $muplugins ),
+                'core'      => LocoPackage::sort_modified( $core ),
             );
             // upgrade notice
             if( $updates = get_site_transient('update_plugins') ){
